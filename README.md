@@ -1,2 +1,2 @@
 # test-harness-oidc-federation
-Client Side examples for demonstration puposes
+Client Side examples for demonstration test
