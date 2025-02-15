@@ -68,8 +68,46 @@ const formSchema = z.object({
   endpoint: z.string().default(ENDPOINTS[0].value),
 })
 
+// Add type for registration response
+type OIDCRegistrationResponse = {
+  client_id: string;
+  client_secret: string;
+  registration_access_token: string;
+  registration_client_uri: string;
+  token_endpoint: string;
+  authorization_endpoint: string;
+  jwks_uri: string;
+  response_types_supported: string[];
+  grant_types_supported: string[];
+  subject_type: string;
+  id_token_signed_response_alg: string;
+  client_uri?: string;
+  redirect_uris: string[];
+}
+
+function generateRegistrationResponse(data: z.infer<typeof formSchema>): OIDCRegistrationResponse {
+  const baseUrl = new URL(data.endpoint).origin
+  const clientId = `client_${Math.random().toString(36).substring(2)}`
+  
+  return {
+    client_id: clientId,
+    client_secret: `secret_${Math.random().toString(36).substring(2)}`,
+    registration_access_token: `rat_${Math.random().toString(36).substring(2)}`,
+    registration_client_uri: `${baseUrl}/oidc/register/${clientId}`,
+    token_endpoint: `${baseUrl}/oidc/token`,
+    authorization_endpoint: `${baseUrl}/oidc/auth`,
+    jwks_uri: `${baseUrl}/oidc/jwks`,
+    response_types_supported: ["code", "token", "id_token"],
+    grant_types_supported: ["authorization_code", "refresh_token"],
+    subject_type: "public",
+    id_token_signed_response_alg: "RS256",
+    redirect_uris: [`${baseUrl}/callback`]
+  }
+}
+
 export default function RegisterPage() {
   const [submittedData, setSubmittedData] = useState<z.infer<typeof formSchema> | null>(null)
+  const [registrationResponse, setRegistrationResponse] = useState<OIDCRegistrationResponse | null>(null)
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -89,13 +127,17 @@ export default function RegisterPage() {
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     setSubmittedData(values)
+    // Simulate API response
+    const response = generateRegistrationResponse(values)
+    setRegistrationResponse(response)
     toast({
-      title: "Registration Submitted",
-      description: "Your registration details have been received.",
+      title: "Registration Successful",
+      description: "Client credentials have been generated.",
     })
   }
 
   function generateJWT(data: z.infer<typeof formSchema>) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { endpoint, ...payload } = data
     
     // Create JWT parts
@@ -268,8 +310,60 @@ export default function RegisterPage() {
 
           {/* Display submitted data below form on mobile */}
           <div className="md:hidden mt-8">
-            {submittedData && (
+            {submittedData && registrationResponse && (
               <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Registration Response</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="font-semibold text-sm">Client Credentials</h3>
+                        <pre className="bg-slate-100 p-4 rounded-lg overflow-auto mt-2">
+                          {JSON.stringify({
+                            client_id: registrationResponse.client_id,
+                            client_secret: registrationResponse.client_secret
+                          }, null, 2)}
+                        </pre>
+                      </div>
+                      
+                      <div>
+                        <h3 className="font-semibold text-sm">Registration Details</h3>
+                        <pre className="bg-slate-100 p-4 rounded-lg overflow-auto mt-2">
+                          {JSON.stringify({
+                            registration_access_token: registrationResponse.registration_access_token,
+                            registration_client_uri: registrationResponse.registration_client_uri,
+                          }, null, 2)}
+                        </pre>
+                      </div>
+
+                      <div>
+                        <h3 className="font-semibold text-sm">OIDC Endpoints</h3>
+                        <pre className="bg-slate-100 p-4 rounded-lg overflow-auto mt-2">
+                          {JSON.stringify({
+                            token_endpoint: registrationResponse.token_endpoint,
+                            authorization_endpoint: registrationResponse.authorization_endpoint,
+                            jwks_uri: registrationResponse.jwks_uri,
+                          }, null, 2)}
+                        </pre>
+                      </div>
+
+                      <div>
+                        <h3 className="font-semibold text-sm">Supported Features</h3>
+                        <pre className="bg-slate-100 p-4 rounded-lg overflow-auto mt-2">
+                          {JSON.stringify({
+                            response_types_supported: registrationResponse.response_types_supported,
+                            grant_types_supported: registrationResponse.grant_types_supported,
+                            subject_type: registrationResponse.subject_type,
+                            id_token_signed_response_alg: registrationResponse.id_token_signed_response_alg,
+                          }, null, 2)}
+                        </pre>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
                 <Card>
                   <CardHeader>
                     <CardTitle>JWT Token</CardTitle>
@@ -339,13 +433,74 @@ export default function RegisterPage() {
                 <li>URLs must be valid (profile, picture, website)</li>
                 <li>Required fields: sub, given_name, family_name, email</li>
               </ul>
+
+              <h3 className="font-semibold">Registration Response:</h3>
+              <ul className="list-disc pl-4 space-y-2">
+                <li>Returns OIDC-compliant client credentials</li>
+                <li>Includes registration access token for client management</li>
+                <li>Provides standard OIDC endpoints</li>
+                <li>Lists supported response types and grant types</li>
+                <li>Follows OAuth 2.0 Dynamic Client Registration Protocol</li>
+              </ul>
             </AlertDescription>
           </Alert>
 
           {/* Display submitted data on desktop */}
           <div className="hidden md:block">
-            {submittedData && (
+            {submittedData && registrationResponse && (
               <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Registration Response</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="font-semibold text-sm">Client Credentials</h3>
+                        <pre className="bg-slate-100 p-4 rounded-lg overflow-auto mt-2">
+                          {JSON.stringify({
+                            client_id: registrationResponse.client_id,
+                            client_secret: registrationResponse.client_secret
+                          }, null, 2)}
+                        </pre>
+                      </div>
+                      
+                      <div>
+                        <h3 className="font-semibold text-sm">Registration Details</h3>
+                        <pre className="bg-slate-100 p-4 rounded-lg overflow-auto mt-2">
+                          {JSON.stringify({
+                            registration_access_token: registrationResponse.registration_access_token,
+                            registration_client_uri: registrationResponse.registration_client_uri,
+                          }, null, 2)}
+                        </pre>
+                      </div>
+
+                      <div>
+                        <h3 className="font-semibold text-sm">OIDC Endpoints</h3>
+                        <pre className="bg-slate-100 p-4 rounded-lg overflow-auto mt-2">
+                          {JSON.stringify({
+                            token_endpoint: registrationResponse.token_endpoint,
+                            authorization_endpoint: registrationResponse.authorization_endpoint,
+                            jwks_uri: registrationResponse.jwks_uri,
+                          }, null, 2)}
+                        </pre>
+                      </div>
+
+                      <div>
+                        <h3 className="font-semibold text-sm">Supported Features</h3>
+                        <pre className="bg-slate-100 p-4 rounded-lg overflow-auto mt-2">
+                          {JSON.stringify({
+                            response_types_supported: registrationResponse.response_types_supported,
+                            grant_types_supported: registrationResponse.grant_types_supported,
+                            subject_type: registrationResponse.subject_type,
+                            id_token_signed_response_alg: registrationResponse.id_token_signed_response_alg,
+                          }, null, 2)}
+                        </pre>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
                 <Card>
                   <CardHeader>
                     <CardTitle>JWT Token</CardTitle>
